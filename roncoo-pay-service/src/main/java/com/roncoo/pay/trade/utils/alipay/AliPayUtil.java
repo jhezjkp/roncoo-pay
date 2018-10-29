@@ -138,16 +138,16 @@ public class AliPayUtil {
         SortedMap<String, String> paramMap = new TreeMap<>();
         paramMap.put("service", "single_trade_query");
         paramMap.put("partner", AlipayConfigUtil.partner);
-        paramMap.put("_input_charset", AlipayConfigUtil.input_charset);
+        paramMap.put("_input_charset", AlipayConfigUtil.charset);
         paramMap.put("out_trade_no", outTradeNo);
         paramMap.put("sign", getSign(paramMap, AlipayConfigUtil.key));
         paramMap.put("sign_type", AlipayConfigUtil.sign_type);
         HttpProtocolHandler httpProtocolHandler = HttpProtocolHandler.getInstance();
         HttpRequest request = new HttpRequest(HttpResultType.BYTES);
         // 设置编码集
-        request.setCharset(AlipayConfigUtil.input_charset);
+        request.setCharset(AlipayConfigUtil.charset);
         request.setParameters(generatNameValuePair(paramMap));
-        request.setUrl("https://mapi.alipay.com/gateway.do?_input_charset=" + AlipayConfigUtil.input_charset);
+        request.setUrl("https://mapi.alipay.com/gateway.do?_input_charset=" + AlipayConfigUtil.charset);
         String strResult = null;
         try {
             HttpResponse response = httpProtocolHandler.execute(request, "", "");

@@ -19,16 +19,26 @@
 	<dependencies>
 
 		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
 			<groupId>com.roncoo.pay.common</groupId>
 			<artifactId>roncoo-pay-common-core</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
 
-		<!-- http://mvnrepository.com/artifact/commons-httpclient/commons-httpclient -->
+		<!-- alipay sdk -->
+		<dependency>
+			<groupId>com.alipay.sdk</groupId>
+			<artifactId>alipay-sdk-java</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>commons-httpclient</groupId>
 			<artifactId>commons-httpclient</artifactId>
-			<version>3.1</version>
 		</dependency>
 
 		<dependency>
@@ -81,14 +91,14 @@
 					<source>1.7</source>
 					<target>1.7</target>
 					<encoding>UTF-8</encoding>
-					<compilerArgs>
-						<arg>-verbose</arg>
-						<arg>-Xlint:unchecked</arg>
-						<arg>-Xlint:deprecation</arg>
-						<arg>-bootclasspath</arg>
-						<arg>-extdirs</arg>
-						<arg>${project.basedir}/lib</arg>
-					</compilerArgs>
+					<!--<compilerArgs>-->
+						<!--<arg>-verbose</arg>-->
+						<!--<arg>-Xlint:unchecked</arg>-->
+						<!--<arg>-Xlint:deprecation</arg>-->
+						<!--<arg>-bootclasspath</arg>-->
+						<!--<arg>-extdirs</arg>-->
+						<!--<arg>${project.basedir}/lib</arg>-->
+					<!--</compilerArgs>-->
 				</configuration>
 			</plugin>
 			<plugin>

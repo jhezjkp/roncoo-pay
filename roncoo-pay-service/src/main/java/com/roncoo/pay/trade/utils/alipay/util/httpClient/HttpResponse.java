@@ -60,7 +60,7 @@ public class HttpResponse {
             return stringResult;
         }
         if (byteResult != null) {
-            return new String(byteResult, AlipayConfigUtil.input_charset);
+            return new String(byteResult, AlipayConfigUtil.charset);
         }
         return null;
     }

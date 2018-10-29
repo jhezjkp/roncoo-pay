@@ -138,11 +138,11 @@
 		</dependency>
 
 
-		<dependency>
-			<groupId>javax</groupId>
-			<artifactId>javaee-api</artifactId>
-			<version>${javaee-api.version}</version>
-		</dependency>
+		<!--<dependency>-->
+			<!--<groupId>javax</groupId>-->
+			<!--<artifactId>javaee-api</artifactId>-->
+			<!--<version>${javaee-api.version}</version>-->
+		<!--</dependency>-->
 
 		<dependency>
 			<groupId>cglib</groupId>
@@ -208,6 +208,18 @@
 					<source>1.7</source>
 					<target>1.7</target>
 					<encoding>UTF-8</encoding>
+				</configuration>
+			</plugin>
+			<!-- tomcat运行插件 -->
+			<plugin>
+				<groupId>org.apache.tomcat.maven</groupId>
+				<artifactId>tomcat7-maven-plugin</artifactId>
+				<version>2.1</version>
+				<configuration>
+					<port>8000</port>
+					<path>/</path>
+					<uriEncoding>UTF-8</uriEncoding>
+					<server>tomcat7</server>
 				</configuration>
 			</plugin>
 		</plugins>

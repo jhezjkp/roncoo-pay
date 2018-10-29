@@ -16,6 +16,16 @@
 package com.roncoo.pay.trade.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.domain.AlipayTradePagePayModel;
+import com.alipay.api.domain.AlipayTradeQueryModel;
+import com.alipay.api.internal.util.AlipaySignature;
+import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.response.AlipayTradePagePayResponse;
+import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.roncoo.pay.account.service.RpAccountTransactionService;
 import com.roncoo.pay.common.core.enums.PayTypeEnum;
 import com.roncoo.pay.common.core.enums.PayWayEnum;
@@ -42,8 +52,6 @@ import com.roncoo.pay.trade.utils.WeiXinPayUtils;
 import com.roncoo.pay.trade.utils.WeixinConfigUtil;
 import com.roncoo.pay.trade.utils.alipay.AliPayUtil;
 import com.roncoo.pay.trade.utils.alipay.config.AlipayConfigUtil;
-import com.roncoo.pay.trade.utils.alipay.util.AlipayNotify;
-import com.roncoo.pay.trade.utils.alipay.util.AlipaySubmit;
 import com.roncoo.pay.trade.utils.weixin.WeiXinPayUtil;
 import com.roncoo.pay.trade.vo.*;
 import com.roncoo.pay.user.entity.RpPayWay;
@@ -648,25 +656,38 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             }
         } else if (PayWayEnum.ALIPAY.name().equals(payWayCode)) {// 支付宝支付
 
-            // 把请求参数打包成数组
-            Map<String, String> sParaTemp = new HashMap<String, String>();
-            sParaTemp.put("service", AlipayConfigUtil.service);
-            sParaTemp.put("partner", AlipayConfigUtil.partner);
-            sParaTemp.put("seller_id", AlipayConfigUtil.seller_id);
-            sParaTemp.put("_input_charset", AlipayConfigUtil.input_charset);
-            sParaTemp.put("payment_type", AlipayConfigUtil.payment_type);
-            sParaTemp.put("notify_url", AlipayConfigUtil.notify_url);
-            sParaTemp.put("return_url", AlipayConfigUtil.return_url);
-            sParaTemp.put("anti_phishing_key", AlipayConfigUtil.anti_phishing_key);
-            sParaTemp.put("exter_invoke_ip", AlipayConfigUtil.exter_invoke_ip);
-            sParaTemp.put("out_trade_no", rpTradePaymentRecord.getBankOrderNo());
-            sParaTemp.put("subject", rpTradePaymentOrder.getProductName());
-            sParaTemp.put("total_fee", String.valueOf(rpTradePaymentOrder.getOrderAmount().setScale(2, BigDecimal.ROUND_HALF_UP)));// 小数点后两位
-            sParaTemp.put("body", "");
-            LOG.info("扫码支付，支付宝请求参数:{}", sParaTemp);
+
+            AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key,"json","utf-8", AlipayConfigUtil.ali_public_key,"RSA2");
+            AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
+            // 相关参数参考页面：https://docs.open.alipay.com/api_1/alipay.trade.page.pay
+            AlipayTradePagePayModel model = new AlipayTradePagePayModel();
+            model.setBody("我是测试数据");    // 订单描述
+            model.setSubject(rpTradePaymentOrder.getProductName()); // 订单标题
+            model.setOutTradeNo(rpTradePaymentRecord.getBankOrderNo());
+            model.setTimeoutExpress("30m"); // 该笔订单允许的最晚付款时间，逾期将关闭交易。
+            model.setTotalAmount( String.valueOf(rpTradePaymentOrder.getOrderAmount().setScale(2, BigDecimal.ROUND_HALF_UP)));  // 金额
+            model.setProductCode("FAST_INSTANT_TRADE_PAY"); // 销售产品码，与支付宝签约的产品码名称。注：目前仅支持FAST_INSTANT_TRADE_PAY
+            request.setBizModel(model);
+
+            LOG.info("扫码支付，支付宝请求参数:{}", JSON.toJSON(model));
+
+            request.setNotifyUrl(AlipayConfigUtil.notify_url);
+            request.setReturnUrl(AlipayConfigUtil.return_url);
+            request.setBizModel(model);
+            AlipayTradePagePayResponse response = null;
+            try {
+                response = alipayClient.pageExecute(request);
+            } catch (AlipayApiException e) {
+                e.printStackTrace();
+            }
+
+
+            if(!response.isSuccess()){
+                throw new TradeBizException(TradeBizException.TRADE_ALIPAY_ERROR, "生成重定向页面失败");
+            }
+            String sHtmlText = response.getBody();
 
             // 获取请求页面数据
-            String sHtmlText = AlipaySubmit.buildRequest(sParaTemp, "get", "确认");
             LOG.info("扫码支付，支付宝返回报文:{}", sHtmlText);
 
             rpTradePaymentRecord.setBankReturnMsg(sHtmlText);
@@ -703,8 +724,11 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             throw new TradeBizException(TradeBizException.TRADE_ORDER_ERROR, ",非法订单,订单不存在");
         }
 
-        if (TradeStatusEnum.SUCCESS.name().equals(rpTradePaymentRecord.getStatus())) {
-            throw new TradeBizException(TradeBizException.TRADE_ORDER_ERROR, "订单为成功状态");
+        if (TradeStatusEnum.SUCCESS.name().equals(rpTradePaymentRecord.getStatus())) {  // 可能收到重复通知的，直接响应成功
+            if(PayWayEnum.ALIPAY.name().equals(payWayCode)) {
+                return "success";
+            }
+//          throw new TradeBizException(TradeBizException.TRADE_ORDER_ERROR, "订单为成功状态");
         }
         String merchantNo = rpTradePaymentRecord.getMerchantNo();// 商户编号
 
@@ -751,7 +775,14 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             }
 
         } else if (PayWayEnum.ALIPAY.name().equals(payWayCode)) {
-            if (AlipayNotify.verify(notifyMap)) {// 验证成功
+            boolean verifyResult = false;
+            try {
+                verifyResult = AlipaySignature.rsaCheckV1(notifyMap, AlipayConfigUtil.ali_public_key, AlipayConfigUtil.charset, "RSA2");
+            } catch (AlipayApiException e) {
+                LOG.error("支付宝回调签名验证异常", e);
+                throw new TradeBizException(TradeBizException.TRADE_ALIPAY_ERROR, "支付宝签名异常");
+            }
+            if (verifyResult) {// 验证成功
                 String tradeStatus = notifyMap.get("trade_status");
                 if (AliPayTradeStateEnum.TRADE_FINISHED.name().equals(tradeStatus)) {
                     // 判断该笔订单是否在商户网站中已经做过处理
@@ -809,11 +840,31 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
 
         RpTradePaymentOrder rpTradePaymentOrder = rpTradePaymentOrderDao.selectByMerchantNoAndMerchantOrderNo(rpTradePaymentRecord.getMerchantNo(), rpTradePaymentRecord.getMerchantOrderNo());
 
-        String trade_status = resultMap.get("trade_status");
+        boolean tradeStatus = false;
+        AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id,AlipayConfigUtil.mch_private_key,"json", AlipayConfigUtil.charset,AlipayConfigUtil.ali_public_key,AlipayConfigUtil.sign_type);
+        AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
+        AlipayTradeQueryModel model = new AlipayTradeQueryModel();
+        model.setOutTradeNo(resultMap.get("out_trade_no"));
+        model.setTradeNo(resultMap.get("trade_no"));
+        request.setBizModel(model);
+        AlipayTradeQueryResponse response = null;
+        try {
+            response = alipayClient.execute(request);
+            tradeStatus = response.isSuccess();
+        } catch (AlipayApiException e) {
+            LOG.error("支付宝收单交易查询接口调用异常", e);
+        }
+
         // 计算得出通知验证结果
-        boolean verify_result = AlipayNotify.verify(resultMap);
+        boolean verify_result = false;
+        try {
+            verify_result = AlipaySignature.rsaCheckV1(resultMap, AlipayConfigUtil.ali_public_key, "utf-8", "RSA2");
+        } catch (AlipayApiException e) {
+            e.printStackTrace();
+        }
+//        boolean verify_result = AlipayNotify.verify(resultMap);
         if (verify_result) {// 验证成功
-            if (trade_status.equals("TRADE_FINISHED") || trade_status.equals("TRADE_SUCCESS")) {
+            if (tradeStatus) {
                 String resultUrl = getMerchantNotifyUrl(rpTradePaymentRecord, rpTradePaymentOrder, rpTradePaymentRecord.getReturnUrl(), TradeStatusEnum.SUCCESS);
                 orderPayResultVo.setReturnUrl(resultUrl);
                 orderPayResultVo.setStatus(TradeStatusEnum.SUCCESS.name());
