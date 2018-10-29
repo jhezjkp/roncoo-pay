@@ -34,7 +34,7 @@ import com.roncoo.pay.notify.entity.RpOrderResultQueryVo;
 import com.roncoo.pay.notify.enums.NotifyStatusEnum;
 
 /**
- * 
+ * mq监听，从这是触发业务
  * @author wujing
  */
 public class PollingMessageListener implements MessageListener {

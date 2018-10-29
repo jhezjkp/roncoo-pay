@@ -657,7 +657,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
         } else if (PayWayEnum.ALIPAY.name().equals(payWayCode)) {// 支付宝支付
 
 
-            AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key,"json","utf-8", AlipayConfigUtil.ali_public_key,"RSA2");
+            AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key, "json", "utf-8", AlipayConfigUtil.ali_public_key, "RSA2");
             AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
             // 相关参数参考页面：https://docs.open.alipay.com/api_1/alipay.trade.page.pay
             AlipayTradePagePayModel model = new AlipayTradePagePayModel();
@@ -665,7 +665,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             model.setSubject(rpTradePaymentOrder.getProductName()); // 订单标题
             model.setOutTradeNo(rpTradePaymentRecord.getBankOrderNo());
             model.setTimeoutExpress("30m"); // 该笔订单允许的最晚付款时间，逾期将关闭交易。
-            model.setTotalAmount( String.valueOf(rpTradePaymentOrder.getOrderAmount().setScale(2, BigDecimal.ROUND_HALF_UP)));  // 金额
+            model.setTotalAmount(String.valueOf(rpTradePaymentOrder.getOrderAmount().setScale(2, BigDecimal.ROUND_HALF_UP)));  // 金额
             model.setProductCode("FAST_INSTANT_TRADE_PAY"); // 销售产品码，与支付宝签约的产品码名称。注：目前仅支持FAST_INSTANT_TRADE_PAY
             request.setBizModel(model);
 
@@ -682,7 +682,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             }
 
 
-            if(!response.isSuccess()){
+            if (!response.isSuccess()) {
                 throw new TradeBizException(TradeBizException.TRADE_ALIPAY_ERROR, "生成重定向页面失败");
             }
             String sHtmlText = response.getBody();
@@ -725,7 +725,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
         }
 
         if (TradeStatusEnum.SUCCESS.name().equals(rpTradePaymentRecord.getStatus())) {  // 可能收到重复通知的，直接响应成功
-            if(PayWayEnum.ALIPAY.name().equals(payWayCode)) {
+            if (PayWayEnum.ALIPAY.name().equals(payWayCode)) {
                 return "success";
             }
 //          throw new TradeBizException(TradeBizException.TRADE_ORDER_ERROR, "订单为成功状态");
@@ -841,7 +841,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
         RpTradePaymentOrder rpTradePaymentOrder = rpTradePaymentOrderDao.selectByMerchantNoAndMerchantOrderNo(rpTradePaymentRecord.getMerchantNo(), rpTradePaymentRecord.getMerchantOrderNo());
 
         boolean tradeStatus = false;
-        AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id,AlipayConfigUtil.mch_private_key,"json", AlipayConfigUtil.charset,AlipayConfigUtil.ali_public_key,AlipayConfigUtil.sign_type);
+        AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key, "json", AlipayConfigUtil.charset, AlipayConfigUtil.ali_public_key, AlipayConfigUtil.sign_type);
         AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
         AlipayTradeQueryModel model = new AlipayTradeQueryModel();
         model.setOutTradeNo(resultMap.get("out_trade_no"));
@@ -1146,24 +1146,24 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
                 if (PayTypeEnum.DIRECT_PAY.name().equals(byBankOrderNo.getPayTypeCode())) {
                     //支付宝--即时到账
                     LOG.info("支付宝--即时到账订单查询!订单号:[{}]", byBankOrderNo.getBankOrderNo());
-                    Map<String, Object> resultMap = AliPayUtil.singleTradeQuery(byBankOrderNo.getBankOrderNo());
-                    if (resultMap.isEmpty() || !"T".equals(resultMap.get("is_success"))) {
+                    AlipayTradeQueryResponse res = AliPayUtil.tradeQuery(byBankOrderNo.getBankOrderNo());
+                    if (res == null || !res.isSuccess()) {
                         return false;
                     }
                     // 当返回状态为“TRADE_FINISHED”交易成功结束和“TRADE_SUCCESS”支付成功时更新交易状态
-                    if ("TRADE_SUCCESS".equals(resultMap.get("trade_status")) || "TRADE_FINISHED".equals(resultMap.get("trade_status"))) {
+                    if ("TRADE_SUCCESS".equals(res.getTradeStatus()) || "TRADE_FINISHED".equals(res.getTradeStatus())) {
                         completeSuccessOrder(byBankOrderNo, byBankOrderNo.getBankTrxNo(), new Date(), "订单交易成功");
                         return true;
                     }
                 } else if (PayTypeEnum.F2F_PAY.name().equals(byBankOrderNo.getPayTypeCode())) {
                     //支付宝--条码支付
                     LOG.info("支付宝--条码支付订单查询!订单号:[{}]", byBankOrderNo.getBankOrderNo());
-                    Map<String, Object> resultMap = AliPayUtil.tradeQuery(byBankOrderNo.getBankOrderNo());
-                    if (!"10000".equals(resultMap.get("code"))) {
+                    AlipayTradeQueryResponse res = AliPayUtil.tradeQuery(byBankOrderNo.getBankOrderNo());
+                    if (res == null || !res.isSuccess()) {
                         return false;
                     }
                     // 当返回状态为“TRADE_FINISHED”交易成功结束和“TRADE_SUCCESS”支付成功时更新交易状态
-                    if ("TRADE_SUCCESS".equals(resultMap.get("tradeStatus")) || "TRADE_FINISHED".equals(resultMap.get("tradeStatus"))) {
+                    if ("TRADE_SUCCESS".equals(res.getTradeStatus()) || "TRADE_FINISHED".equals(res.getTradeStatus())) {
                         completeSuccessOrder(byBankOrderNo, byBankOrderNo.getBankTrxNo(), new Date(), "订单交易成功");
                         return true;
                     }
@@ -1186,8 +1186,8 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
         if (PayWayEnum.WEIXIN.name().equals(payWayCode)) {
             payType = PayTypeEnum.WX_PROGRAM_PAY;
             payWay = rpPayWayService.getByPayWayTypeCode(rpUserPayConfig.getProductCode(), payWayCode, payType.name());
-        }else{
-            throw new TradeBizException(TradeBizException.TRADE_PAY_WAY_ERROR , "暂不支持此支付方式");
+        } else {
+            throw new TradeBizException(TradeBizException.TRADE_PAY_WAY_ERROR, "暂不支持此支付方式");
         }
         if (payWay == null) {
             throw new UserBizException(UserBizException.USER_PAY_CONFIG_ERRPR, "用户支付配置有误");
@@ -1234,7 +1234,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             payType = PayTypeEnum.WX_PROGRAM_PAY;
         } else if (PayWayEnum.ALIPAY.name().equals(payWay.getPayWayCode())) {
             // TODO 支付宝小程序支付，需要自定义枚举
-            throw new TradeBizException(TradeBizException.TRADE_PAY_WAY_ERROR , "暂不支持此支付方式");
+            throw new TradeBizException(TradeBizException.TRADE_PAY_WAY_ERROR, "暂不支持此支付方式");
         }
 
         tradePaymentOrder.setPayTypeCode(payType.name());// 支付类型
@@ -1282,7 +1282,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
                 }
             }
         } else if (PayWayEnum.ALIPAY.name().equals(payWayCode)) {// 支付宝支付
-            throw new TradeBizException(TradeBizException.TRADE_PAY_WAY_ERROR , "暂不支持此支付方式");
+            throw new TradeBizException(TradeBizException.TRADE_PAY_WAY_ERROR, "暂不支持此支付方式");
         }
 
         Map<String, Object> paramMap = new HashMap<>();

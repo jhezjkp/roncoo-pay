@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.domain.AlipayTradeQueryModel;
 import com.alipay.api.request.AlipayTradePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.response.AlipayTradePayResponse;
@@ -106,84 +107,23 @@ public class AliPayUtil {
         }
     }
 
-    /**
-     * 订单查询
-     *
-     * @return
-     */
-    public static Map<String, Object> tradeQuery(String outTradeNo) {
-        logger.info("======>支付宝交易查询");
-        String charset = "UTF-8";
-        String format = "json";
-        String signType = "RSA2";
-        AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.trade_query_url, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key, format, charset, AlipayConfigUtil.ali_public_key, signType);
-
-        SortedMap<String, Object> bizContentMap = new TreeMap<>();
-        bizContentMap.put("out_trade_no", outTradeNo);
+    public static AlipayTradeQueryResponse tradeQuery(String outTradeNo) {
+        AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key, "json", AlipayConfigUtil.charset, AlipayConfigUtil.ali_public_key, AlipayConfigUtil.sign_type);
         AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
-        request.setBizContent(JSONObject.toJSONString(bizContentMap));
+        AlipayTradeQueryModel model = new AlipayTradeQueryModel();
+        model.setOutTradeNo(outTradeNo);
+//        model.setTradeNo(resultMap.get("trade_no"));
+        request.setBizModel(model);
+        AlipayTradeQueryResponse response = null;
         try {
-            AlipayTradeQueryResponse response = alipayClient.execute(request);
-            JSONObject responseJSON = JSONObject.parseObject(JSONObject.toJSONString(response));
-            logger.info("支付宝订单查询返回结果:{}", responseJSON);
-            return responseJSON;
+            response = alipayClient.execute(request);
+            return response;
         } catch (AlipayApiException e) {
-            logger.error("支付宝交易查询异常:{}", e);
-            return null;
+            logger.error("支付宝收单线下交易查询发生异常", e);
         }
+        return null;
     }
 
-
-    public static Map<String, Object> singleTradeQuery(String outTradeNo) {
-        SortedMap<String, String> paramMap = new TreeMap<>();
-        paramMap.put("service", "single_trade_query");
-        paramMap.put("partner", AlipayConfigUtil.partner);
-        paramMap.put("_input_charset", AlipayConfigUtil.charset);
-        paramMap.put("out_trade_no", outTradeNo);
-        paramMap.put("sign", getSign(paramMap, AlipayConfigUtil.key));
-        paramMap.put("sign_type", AlipayConfigUtil.sign_type);
-        HttpProtocolHandler httpProtocolHandler = HttpProtocolHandler.getInstance();
-        HttpRequest request = new HttpRequest(HttpResultType.BYTES);
-        // 设置编码集
-        request.setCharset(AlipayConfigUtil.charset);
-        request.setParameters(generatNameValuePair(paramMap));
-        request.setUrl("https://mapi.alipay.com/gateway.do?_input_charset=" + AlipayConfigUtil.charset);
-        String strResult = null;
-        try {
-            HttpResponse response = httpProtocolHandler.execute(request, "", "");
-            if (response == null) {
-                return null;
-            }
-            strResult = response.getStringResult();
-        } catch (Exception e) {
-            logger.info("支付宝扫码查询--请求异常！");
-        }
-        logger.info("支付宝扫码查询--返回结果:{}", strResult);
-        try {
-            Document document = DocumentHelper.parseText(strResult);
-            List<Element> tradeList = document.getRootElement().element("response").element("trade").elements();
-            SortedMap<String, String> responseMap = new TreeMap<>();
-            for (Element ele : tradeList) {
-                responseMap.put(ele.getName(), ele.getText());
-            }
-            String resultSign = getSign(responseMap, AlipayConfigUtil.key);
-
-            String sign = document.getRootElement().element("sign").getText();
-            if (resultSign.equals(sign)) {
-                Map<String, Object> resultMap = new HashMap<>();
-                resultMap.putAll(responseMap);
-                resultMap.put("is_success",document.getRootElement().element("is_success").getText());
-                return resultMap;
-            } else {
-                logger.info("支付宝--订单查询验签不通过:{},返回签名:[{}],返回报文签名:[{}]", sign, resultSign);
-                return null;
-            }
-
-        } catch (DocumentException e) {
-            logger.info("支付宝扫码查询--返回结果解析失败！");
-            return null;
-        }
-    }
 
     /**
      * MAP类型数组转换成NameValuePair类型
