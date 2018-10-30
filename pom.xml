@@ -380,7 +380,7 @@
 
 			<dependency>
 				<groupId>org.apache.activemq</groupId>
-				<artifactId>activemq-all</artifactId>
+				<artifactId>activemq-spring</artifactId>
 				<version>${activeMQ.version}</version>
 			</dependency>
 			<dependency>

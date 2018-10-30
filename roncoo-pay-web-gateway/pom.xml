@@ -26,11 +26,6 @@
             <version>${project.parent.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.activemq</groupId>
-            <artifactId>activemq-all</artifactId>
-        </dependency>
-
         <!-- Spring libs Begin -->
         <dependency>
             <groupId>org.springframework</groupId>
@@ -123,7 +118,7 @@
 
         <dependency>
             <groupId>org.apache.activemq</groupId>
-            <artifactId>activemq-all</artifactId>
+            <artifactId>activemq-spring</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.activemq</groupId>
