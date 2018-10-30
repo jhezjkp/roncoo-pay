@@ -25,6 +25,7 @@ import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.response.AlipayTradePagePayResponse;
+import com.alipay.api.response.AlipayTradePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.roncoo.pay.account.service.RpAccountTransactionService;
 import com.roncoo.pay.common.core.enums.PayTypeEnum;
@@ -312,7 +313,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
             if (rpUserPayInfo == null) {
                 throw new UserBizException(UserBizException.USER_PAY_CONFIG_ERRPR, "商户支付配置有误");
             }
-            Map<String, Object> resultMap = AliPayUtil.tradePay(rpTradePaymentRecord.getBankOrderNo(), authCode, rpTradePaymentOrder.getProductName(), rpTradePaymentRecord.getOrderAmount(), "", roncooPayGoodsDetailses);
+            AlipayTradePayResponse res = AliPayUtil.tradePay(rpTradePaymentRecord.getBankOrderNo(), authCode, rpTradePaymentOrder.getProductName(), rpTradePaymentRecord.getOrderAmount(), "", roncooPayGoodsDetailses);
             //支付条码支付--统一根据订单轮询去确认支付结果
             rpNotifyService.orderSend(rpTradePaymentRecord.getBankOrderNo());
         } else {

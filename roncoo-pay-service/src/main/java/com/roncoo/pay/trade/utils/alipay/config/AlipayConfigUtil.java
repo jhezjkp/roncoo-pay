@@ -70,6 +70,9 @@ public class AlipayConfigUtil {
     // MD5密钥，安全检验码，由数字和字母组成的32位字符串，查看地址：https://b.alipay.com/order/pidAndKey.htm
     public static final String key = (String) properties.get("key");
 
+    // 请求参数格式，不可修改
+    public static final String format = "json";
+
     // 支付宝网关地址
     public static final String gateway = (String) properties.get("gateway");
 
