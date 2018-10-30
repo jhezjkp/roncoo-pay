@@ -9,29 +9,25 @@ import com.alipay.api.domain.AlipayTradePayModel;
 import com.alipay.api.domain.AlipayTradeQueryModel;
 import com.alipay.api.domain.ExtendParams;
 import com.alipay.api.domain.GoodsDetail;
+import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.response.AlipayTradePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.roncoo.pay.common.core.utils.StringUtil;
-import com.roncoo.pay.reconciliation.utils.alipay.httpClient.HttpProtocolHandler;
-import com.roncoo.pay.reconciliation.utils.alipay.httpClient.HttpRequest;
-import com.roncoo.pay.reconciliation.utils.alipay.httpClient.HttpResponse;
-import com.roncoo.pay.reconciliation.utils.alipay.httpClient.HttpResultType;
 import com.roncoo.pay.trade.entity.RoncooPayGoodsDetails;
 import com.roncoo.pay.trade.utils.alipay.config.AlipayConfigUtil;
-import com.roncoo.pay.trade.utils.alipay.sign.MD5;
-import org.apache.commons.httpclient.NameValuePair;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.DocumentHelper;
-import org.dom4j.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * 支付宝工具类
+ */
 public class AliPayUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(AliPayUtil.class);
@@ -69,7 +65,6 @@ public class AliPayUtil {
         List<GoodsDetail> details = new ArrayList<>();
         if (roncooPayGoodsDetailses != null && roncooPayGoodsDetailses.size() > 0) {
             GoodsDetail detail = new GoodsDetail();
-            List<SortedMap<String, Object>> goodsList = new ArrayList<>();
             for (RoncooPayGoodsDetails roncooPayGoodsDetails : roncooPayGoodsDetailses) {
                 detail.setAlipayGoodsId(roncooPayGoodsDetails.getGoodsId());
                 detail.setGoodsName(roncooPayGoodsDetails.getGoodsName());
@@ -103,7 +98,6 @@ public class AliPayUtil {
 
         System.out.println(JSONObject.toJSONString(model));
         request.setBizModel(model);
-//        request.setBizContent(JSONObject.toJSONString(paramMap));
         try {
             AlipayTradePayResponse response = alipayClient.execute(request);
             JSONObject responseJSON = JSONObject.parseObject(JSONObject.toJSONString(response));
@@ -119,12 +113,31 @@ public class AliPayUtil {
         }
     }
 
+    /**
+     * 根据商户订单号查询订单情况
+     *
+     * @param outTradeNo
+     * @return
+     */
     public static AlipayTradeQueryResponse tradeQuery(String outTradeNo) {
+        return tradeQuery(outTradeNo, null);
+    }
+
+    /**
+     * 根据商户订单号、支付宝方订单号查询订单情况(其实支付宝在商户订单号和自己的订单号都存在的情况下是优先根据自己的订单号去查的)
+     *
+     * @param outTradeNo
+     * @param tradeNo
+     * @return
+     */
+    public static AlipayTradeQueryResponse tradeQuery(String outTradeNo, String tradeNo) {
         AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key, "json", AlipayConfigUtil.charset, AlipayConfigUtil.ali_public_key, AlipayConfigUtil.sign_type);
         AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
         AlipayTradeQueryModel model = new AlipayTradeQueryModel();
         model.setOutTradeNo(outTradeNo);
-//        model.setTradeNo(resultMap.get("trade_no"));
+        if (!StringUtil.isEmpty(tradeNo)) {
+            model.setTradeNo(tradeNo);
+        }
         request.setBizModel(model);
         AlipayTradeQueryResponse response = null;
         try {
@@ -136,30 +149,20 @@ public class AliPayUtil {
         return null;
     }
 
-
     /**
-     * MAP类型数组转换成NameValuePair类型
+     * 签名检查
      *
-     * @param properties MAP类型数组
-     * @return NameValuePair类型数组
+     * @param resultMap
+     * @return
      */
-    private static NameValuePair[] generatNameValuePair(SortedMap<String, String> properties) {
-        NameValuePair[] nameValuePair = new NameValuePair[properties.size()];
-        int i = 0;
-        for (Map.Entry<String, String> entry : properties.entrySet()) {
-            nameValuePair[i++] = new NameValuePair(entry.getKey(), entry.getValue());
+    public static boolean checkSign(Map<String, String> resultMap) {
+        try {
+            return AlipaySignature.rsaCheckV1(resultMap, AlipayConfigUtil.ali_public_key, AlipayConfigUtil.charset, AlipayConfigUtil.sign_type);
+        } catch (AlipayApiException e) {
+            logger.error("签名检查发生异常", e);
         }
-
-        return nameValuePair;
+        return false;
     }
 
-    private static String getSign(SortedMap<String, String> paramMap, String key) {
-        StringBuilder signBuilder = new StringBuilder();
-        for (Map.Entry<String, String> entry : paramMap.entrySet()) {
-            if (!"sign".equals(entry.getKey()) && !"sign_type".equals(entry.getKey()) && !StringUtil.isEmpty(entry.getValue())) {
-                signBuilder.append(entry.getKey()).append("=").append(entry.getValue()).append("&");
-            }
-        }
-        return MD5.sign(signBuilder.substring(0, signBuilder.length() - 1), key, "UTF-8");
-    }
+
 }

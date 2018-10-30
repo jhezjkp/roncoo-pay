@@ -20,10 +20,8 @@ import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.domain.AlipayTradePagePayModel;
-import com.alipay.api.domain.AlipayTradeQueryModel;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradePagePayRequest;
-import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
@@ -706,7 +704,7 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
     }
 
     /**
-     * 完成扫码支付(支付宝即时到账支付)
+     * 完成扫码支付(到账的异步通知)
      *
      * @param payWayCode
      * @param notifyMap
@@ -841,31 +839,12 @@ public class RpTradePaymentManagerServiceImpl implements RpTradePaymentManagerSe
 
         RpTradePaymentOrder rpTradePaymentOrder = rpTradePaymentOrderDao.selectByMerchantNoAndMerchantOrderNo(rpTradePaymentRecord.getMerchantNo(), rpTradePaymentRecord.getMerchantOrderNo());
 
-        boolean tradeStatus = false;
-        AlipayClient alipayClient = new DefaultAlipayClient(AlipayConfigUtil.gateway, AlipayConfigUtil.app_id, AlipayConfigUtil.mch_private_key, "json", AlipayConfigUtil.charset, AlipayConfigUtil.ali_public_key, AlipayConfigUtil.sign_type);
-        AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
-        AlipayTradeQueryModel model = new AlipayTradeQueryModel();
-        model.setOutTradeNo(resultMap.get("out_trade_no"));
-        model.setTradeNo(resultMap.get("trade_no"));
-        request.setBizModel(model);
-        AlipayTradeQueryResponse response = null;
-        try {
-            response = alipayClient.execute(request);
-            tradeStatus = response.isSuccess();
-        } catch (AlipayApiException e) {
-            LOG.error("支付宝收单交易查询接口调用异常", e);
-        }
 
         // 计算得出通知验证结果
-        boolean verify_result = false;
-        try {
-            verify_result = AlipaySignature.rsaCheckV1(resultMap, AlipayConfigUtil.ali_public_key, "utf-8", "RSA2");
-        } catch (AlipayApiException e) {
-            e.printStackTrace();
-        }
-//        boolean verify_result = AlipayNotify.verify(resultMap);
+        boolean verify_result = AliPayUtil.checkSign(resultMap);
         if (verify_result) {// 验证成功
-            if (tradeStatus) {
+            AlipayTradeQueryResponse response = AliPayUtil.tradeQuery(resultMap.get("out_trade_no"), resultMap.get("trade_no"));
+            if (response != null && response.isSuccess()) {
                 String resultUrl = getMerchantNotifyUrl(rpTradePaymentRecord, rpTradePaymentOrder, rpTradePaymentRecord.getReturnUrl(), TradeStatusEnum.SUCCESS);
                 orderPayResultVo.setReturnUrl(resultUrl);
                 orderPayResultVo.setStatus(TradeStatusEnum.SUCCESS.name());
