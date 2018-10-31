@@ -35,6 +35,8 @@
 		<module>roncoo-pay-web-merchant</module>
 		<!-- 商户订单通知 -->
 		<module>roncoo-pay-app-order-polling</module>
+		<!-- 示例商城(并不属于项目，为方便开发特意加进来) -->
+		<module>roncoo-pay-web-sample-shop</module>
 	</modules>
 
 	<!-- 配置maven地址 -->
@@ -64,7 +66,7 @@
 		<cglib.version>3.2.2</cglib.version>
 		<aspectjrt.version>1.5.4</aspectjrt.version>
 		<aspectjweaver.version>1.8.9</aspectjweaver.version>
-		<mysql.version>5.1.30</mysql.version>
+		<mysql.version>8.0.13</mysql.version>
 		<dbcp.version>1.4</dbcp.version>
 		<jstl.version>1.2</jstl.version>
 		<druid.version>1.0.19</druid.version>
